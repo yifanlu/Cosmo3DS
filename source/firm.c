@@ -28,15 +28,9 @@ u32 emuOffset = 0,
 //Load firm into FCRAM
 void loadFirm(void){
     //Read FIRM from SD card and write to FCRAM
-	const char firmPath[] = "/rei/firmware.bin";
+	const char firmPath[] = "/firmware_cosmo.bin";
 	firmSize = fileSize(firmPath);
     fileRead(firmLocation, firmPath, firmSize);
-    
-    //Decrypt firmware blob
-    u8 firmIV[0x10] = {0};
-    aes_setkey(0x16, memeKey, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_use_keyslot(0x16);
-    aes(firmLocation, firmLocation, firmSize / AES_BLOCK_SIZE, firmIV, AES_CBC_DECRYPT_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
     
     //Parse firmware
     firm = firmLocation;
