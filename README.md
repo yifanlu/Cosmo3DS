@@ -1,44 +1,22 @@
-# ReiNand
-*The original open source N3DS CFW!*
+# Cosmo3DS
 
+This is a stripped down version of [ReiNAND](https://github.com/Reisyukaku/ReiNand) 
+that does nothing but load FIRM and emuNAND.
 
-**Compiling:**
+It is intended to be used with [3ds_injector](https://github.com/yifanlu/3ds_injector) 
+to launch a modified `loader` in FIRM.
 
-You'll need armips added to your Path. [HERE](https://www.dropbox.com/s/ceuv2qeqp38lpah/armips.exe?dl=0) is a pre-compiled version.
+## Build
 
-    make - Compiles All. (launcher and a9lh)
-    make launcher - Compiles CakeHax/CakeBrah payload
-    make a9lh - Compiles arm9loaderhax payload
+Follow the directions for building ReiNAND
 
-Copy everything in 'out' folder to SD root and run!
+## Injecting FIRM
 
-
-**Features:**
-
-* Ninjhax and MSET support!
-
-* Sig checks disabled
-
-* RAM dump (edit RAM.txt with a base 10 number for offset) [Start Button + X]
-
-* Emunand (with 'Rei' version string)
-
-* Compatibility with arm9loaderhax
- 
-
-**Credits:**
- 
- Cakes team for teaching me a few things and just being helpful in general! And for ROP/mset related code, and crypto libs.
-    
- 3DBREW for saving me plenty of reverse engineering time.
-    
- Patois/Cakes for CakesBrah.
- 
- Normmatt for sdmmc.c and generally being helpful!
- 
- AuroraWright for being helpful!
-    
- Me (Rei) for coding everything else.
- 
- The community for your support and help!
- 
+1. You need a decrypted firmware.bin from a compatible version. One that works 
+has SHA1 `2c9b63126e3ed3d402d3e6e01b966675a46a3dae`
+2. Find the `loader` NCCH inside firmware.bin. With the image listed above, 
+the offset is `0x26600`
+3. Make sure your replacement NCCH is the same size. The image listed above 
+has a `loader` of size `0x3000`
+4. Replace the NCCH with your modified version.
+5. Move firmware.bin to the root of your SD card as firmware_cosmo.bin 
