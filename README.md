@@ -8,7 +8,8 @@ to launch a modified `loader` in FIRM.
 
 ## Build
 
-Follow the directions for building ReiNAND
+Follow the directions for building ReiNAND. You also need the `xxd` utility. It 
+is usually included with Linux and OSX.
 
 ## Injecting FIRM
 
