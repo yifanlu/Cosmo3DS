@@ -14,4 +14,3 @@ static struct fb {
 
 void shutdownLCD(void);
 void clearScreen(void);
-void loadSplash(void);

@@ -12,7 +12,7 @@ ifneq ($(PYTHON_VER_MAJOR), 3)
 	PYTHON3 := py -3
 endif
 
-name := ReiNand
+name := Cosmo3DS
 
 dir_source := source
 dir_data := data
@@ -20,31 +20,24 @@ dir_build := build
 dir_mset := CakeHax
 dir_out := out
 dir_emu := emunand
-dir_thread := thread
 dir_ninjhax := CakeBrah
 
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
 CFLAGS := -Wall -Wextra -MMD -MP -O2 -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main
-FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) --no-print-directory
+FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) --no-print-directory
 
 objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 			  $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
 			  $(call rwildcard, $(dir_source), *.s *.c)))
 
 .PHONY: all
-all: launcher a9lh emunand thread ninjhax
+all: launcher a9lh ninjhax
 
 .PHONY: a9lh
 a9lh: $(dir_out)/arm9loaderhax.bin
 
 .PHONY: launcher
 launcher: $(dir_out)/$(name).dat 
-
-.PHONY: emunand
-emunand: $(dir_out)/rei/emunand/emunand.bin
-
-.PHONY: thread
-thread: $(dir_out)/rei/thread/
 
 .PHONY: ninjhax
 ninjhax: $(dir_out)/3ds/$(name)
@@ -61,7 +54,7 @@ $(dir_out)/arm9loaderhax.bin: $(dir_build)/main.bin
 	@cp -av $< $@
 
 .PHONY: $(dir_out)/$(name).dat
-$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/rei/
+$(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)/
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
 	dd if=$(dir_build)/main.bin of=$@ bs=512 seek=144
     
@@ -70,21 +63,16 @@ $(dir_out)/3ds/$(name):
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax)
 	@mv $(dir_out)/$(name).3dsx $@
 	@mv $(dir_out)/$(name).smdh $@
-    
-$(dir_out)/rei/: $(dir_data)/firmware.bin $(dir_data)/splash.bin $(dir_data)/RAM.txt
-	@mkdir -p "$(dir_out)/rei"
-	@cp -av $(dir_data)/* $@
-    
-$(dir_out)/rei/thread/: $(dir_thread)
-	@$(MAKE) $(FLAGS) -C $(dir_thread)
-	@mkdir -p "$(dir_out)/rei/thread"
-	@mv $(dir_thread)/arm9.bin $(dir_out)/rei/thread
-	@mv $(dir_thread)/arm11.bin $(dir_out)/rei/thread
-    
-$(dir_out)/rei/emunand/emunand.bin: $(dir_emu)/emuCode.s
+
+$(dir_out)/:
+	@mkdir -p "$(dir_out)"
+
+$(dir_build)/emunand.bin: $(dir_emu)/emuCode.s
 	@armips $<
-	@mkdir -p "$(dir_out)/rei/emunand"
-	@mv emunand.bin $(dir_out)/rei/emunand
+	@mv emunand.bin $(dir_build)
+
+$(dir_build)/emunand.h: $(dir_build)/emunand.bin
+	@xxd -i $< > $@
 
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@
@@ -92,6 +80,8 @@ $(dir_build)/main.bin: $(dir_build)/main.elf
 $(dir_build)/main.elf: $(objects_cfw)
 	# FatFs requires libgcc for __aeabi_uidiv
 	$(CC) -nostartfiles $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
+
+$(dir_build)/emunand.o: $(dir_build)/emunand.h
 
 $(dir_build)/%.o: $(dir_source)/%.c
 	@mkdir -p "$(@D)"

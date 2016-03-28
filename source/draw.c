@@ -26,9 +26,3 @@ void clearScreen(void){
     memset(fb->top_right, 0, 0x38400);
     memset(fb->bottom, 0, 0x38400);
 }
-
-void loadSplash(void){
-    clearScreen();
-    fileRead(fb->top_left, "/rei/splash.bin", 0);
-    u64 i = 0xFFFFFF; while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func
-}

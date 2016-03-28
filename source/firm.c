@@ -11,6 +11,7 @@
 #include "emunand.h"
 #include "crypto.h"
 #include "draw.h"
+#include "../build/emunand.h"
 
 const void *firmLocation = (void*)0x24000000;
 firmHeader *firm = NULL;
@@ -23,12 +24,6 @@ u32 emuOffset = 0,
     firmSize = 0,
     mpuOffset = 0,
     emuCodeOffset = 0;
-//Patch vars
-u32 sigPatchOffset1 = 0,
-    sigPatchOffset2 = 0,
-    threadOffset1 = 0,
-    threadOffset2 = 0,
-    threadCodeOffset = 0;
 
 //Load firm into FCRAM
 void loadFirm(void){
@@ -60,10 +55,9 @@ void loadEmu(void){
     if(((~*(unsigned *)0x10146000) & 0xFFF) == (1 << 3)) return;
     
     //Read emunand code from SD
-    const char path[] = "/rei/emunand/emunand.bin";
-    u32 size = fileSize(path);
+    u32 size = build_emunand_bin_len;
     getEmuCode(firmLocation, &emuCodeOffset, firmSize);
-    fileRead(emuCodeOffset, path, size);
+    memcpy(emuCodeOffset, build_emunand_bin, size);
     
     //Find and patch emunand related offsets
     u32 *pos_sdmmc = memsearch(emuCodeOffset, "SDMC", size, 4);
@@ -80,23 +74,6 @@ void loadEmu(void){
     //Add emunand hooks
     memcpy((u8*)emuRead, nandRedir, sizeof(nandRedir));
     memcpy((u8*)emuWrite, nandRedir, sizeof(nandRedir));
-}
-
-//Patches
-void patchFirm(){
-    //Disable signature checks
-    getSigChecks(firmLocation, firmSize, &sigPatchOffset1, &sigPatchOffset2);
-    memcpy((u8*)sigPatchOffset1, sigPatch1, sizeof(sigPatch1));
-    memcpy((u8*)sigPatchOffset2, sigPatch2, sizeof(sigPatch2));
-    
-    //Create arm9 thread
-    const char path[] = "/rei/thread/arm9.bin";
-    u32 size = fileSize(path);
-    getThreadCode(&threadCodeOffset);
-    getThreadHooks(firmLocation, firmSize, &threadOffset1, &threadOffset2);
-    fileRead(threadCodeOffset, path, size);
-    memcpy((u8*)threadOffset1, threadHook1, sizeof(threadHook1));
-    memcpy((u8*)threadOffset2, threadHook2, sizeof(threadHook2));
 }
 
 void launchFirm(void){

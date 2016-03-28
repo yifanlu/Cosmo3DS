@@ -12,10 +12,9 @@
 
 int main(){
     mountSD();
-    loadSplash();
+    clearScreen();
     loadFirm();
     loadEmu();
-    patchFirm();
     launchFirm();
     return 0;
 }
