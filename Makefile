@@ -10,7 +10,6 @@ version := $(shell git describe --abbrev=0 --tags)
 
 dir_source := source
 dir_patches := patches
-dir_loader := loader
 dir_injector := injector
 dir_mset := CakeHax
 dir_ninjhax := CakeBrah
@@ -47,7 +46,6 @@ clean:
 	@$(MAKE) $(FLAGS) -C $(dir_mset) clean
 	@$(MAKE) $(FLAGS) -C $(dir_ninjhax) clean
 	@rm -rf $(dir_out) $(dir_build)
-	@$(MAKE) -C $(dir_loader) clean
 	@$(MAKE) -C $(dir_injector) clean
 
 $(dir_out):
@@ -77,11 +75,6 @@ $(dir_build)/patches.h: $(dir_patches)/emunand.s $(dir_patches)/reboot.s $(dir_i
 	@mv emunand.bin reboot.bin $(dir_injector)/injector.cxi $(dir_build)
 	@bin2c -o $@ -n emunand $(dir_build)/emunand.bin -n reboot $(dir_build)/reboot.bin -n injector $(dir_build)/injector.cxi
 
-$(dir_build)/loader.h: $(dir_loader)/Makefile
-	@$(MAKE) -C $(dir_loader)
-	@mv $(dir_loader)/loader.bin $(dir_build)
-	@bin2c -o $@ -n loader $(dir_build)/loader.bin
-
 $(dir_build)/main.bin: $(dir_build)/main.elf
 	$(OC) -S -O binary $< $@
 
@@ -89,7 +82,7 @@ $(dir_build)/main.elf: $(objects_cfw)
 	# FatFs requires libgcc for __aeabi_uidiv
 	$(CC) -nostartfiles $(LDFLAGS) -T linker.ld $(OUTPUT_OPTION) $^
 
-$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/patches.h $(dir_build)/loader.h
+$(dir_build)/%.o: $(dir_source)/%.c $(dir_build)/patches.h
 	@mkdir -p "$(@D)"
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 

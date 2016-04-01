@@ -12,7 +12,6 @@
 #include "crypto.h"
 #include "draw.h"
 #include "screeninit.h"
-#include "loader.h"
 #include "utils.h"
 #include "buttons.h"
 #include "../build/patches.h"
@@ -91,12 +90,6 @@ void setupCFW(void){
     }
 
     if(needConfig){
-
-        /* If L and one of the payload buttons are pressed, and if not using A9LH
-           the Safe Mode combo is not pressed, chainload an external payload */
-        if((pressed & BUTTON_L1) && (pressed & PAYLOAD_BUTTONS) &&
-           pressed != SAFE_MODE) loadPayload();
-
         //If no configuration file exists or SELECT is held, load configuration menu
         if(needConfig == 2 || (pressed & BUTTON_SELECT))
             configureCFW(configPath, patchedFirms[3]);
@@ -268,15 +261,6 @@ void patchFirm(void){
         *writeOffset = writeBlock[0];
         *(writeOffset + 1) = writeBlock[1];
     }
-
-    //Disable signature checks
-    u32 sigOffset,
-        sigOffset2;
-
-    getSigChecks(arm9Section, section[2].size, &sigOffset, &sigOffset2);
-    *(u16 *)sigOffset = sigPatch[0];
-    *(u16 *)sigOffset2 = sigPatch[0];
-    *((u16 *)sigOffset2 + 1) = sigPatch[1];
 
     //Replace the FIRM loader with the injector
     u32 loaderOffset,

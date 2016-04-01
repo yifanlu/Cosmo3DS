@@ -15,8 +15,6 @@ const u32 mpuPatch[3] = {0x00360003, 0x00200603, 0x001C0603};
 
 const u16 nandRedir[2] = {0x4C00, 0x47A0};
 
-const u16 sigPatch[2] = {0x2000, 0x4770};
-
 const u16 writeBlock[2] = {0x2000, 0x46C0};
 
 /**************************************************
@@ -25,15 +23,6 @@ const u16 writeBlock[2] = {0x2000, 0x46C0};
 
 u8 *getProc9(u8 *pos, u32 size){
     return memsearch(pos, "ess9", size, 4);
-}
-
-void getSigChecks(u8 *pos, u32 size, u32 *off, u32 *off2){
-    //Look for signature checks
-    const u8 pattern[] = {0xC0, 0x1C, 0x76, 0xE7},
-             pattern2[] = {0xB5, 0x22, 0x4D, 0x0C};
-
-    *off = (u32)memsearch(pos, pattern, size, 4);
-    *off2 = (u32)memsearch(pos, pattern2, size, 4) - 1;
 }
 
 void *getReboot(u8 *pos, u32 size){

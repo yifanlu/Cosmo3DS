@@ -4,3 +4,6 @@
 [submodule "CakeHax"]
 	path = CakeHax
 	url = https://github.com/mid-kid/CakeHax
+[submodule "injector"]
+	path = injector
+	url = https://github.com/yifanlu/3ds_injector.git
