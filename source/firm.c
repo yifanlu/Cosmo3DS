@@ -22,18 +22,12 @@
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 static u8 *arm9Section;
-static const char *patchedFirms[] = { "/aurei/patched_firmware_sys.bin",
-                                     "/aurei/patched_firmware_emu.bin",
-                                     "/aurei/patched_firmware_em2.bin",
-                                     "/aurei/patched_firmware90.bin" };
 
 static u32 firmSize,
            console,
            mode,
            emuNAND,
            a9lhSetup,
-           selectedFirm,
-           usePatchedFirm,
            emuOffset,
            emuHeader;
 
@@ -49,7 +43,7 @@ void setupCFW(void){
     u16 pressed = HID_PAD;
 
     //Attempt to read the configuration file
-    const char configPath[] = "aurei/config.bin";
+    const char configPath[] = "config_cosmo.bin";
     u32 config = 0,
         needConfig = fileRead(&config, configPath, 3) ? 1 : 2;
 
@@ -90,12 +84,8 @@ void setupCFW(void){
     }
 
     if(needConfig){
-        //If no configuration file exists or SELECT is held, load configuration menu
-        if(needConfig == 2 || (pressed & BUTTON_SELECT))
-            configureCFW(configPath, patchedFirms[3]);
-
-        //If screens are inited, load splash screen
-        if(PDN_GPU_CNT != 1) loadSplash();
+        //If screens are inited, clear screen
+        if(PDN_GPU_CNT != 1) clearScreens();
 
         /* If L is pressed, boot 9.0 FIRM */
         mode = ((config >> 3) & 1) ? ((!(pressed & BUTTON_L1R1)) ? 0 : 1) :
@@ -108,26 +98,11 @@ void setupCFW(void){
             //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
             emuNAND = (mode && ((!(pressed & BUTTON_B)) == ((config >> 4) & 1))) ? 2 : 1;
         } else emuNAND = 0;
-
-        /* If tha FIRM patches version is different or user switched to/from A9LH,
-           delete all patched FIRMs */
-        if((tempConfig & 0xFF0000) != (config & 0xFF0000))
-            deleteFirms(patchedFirms, sizeof(patchedFirms) / sizeof(char *));
     }
 
-    u32 usePatchedFirmSet = ((config >> 1) & 1);
-
     while(1){
-        /* Determine which patched FIRM we need to write or attempt to use (if any).
-           Patched 9.0 FIRM is only needed if "Use pre-patched FIRMs" is set */
-        selectedFirm = mode ? (emuNAND ? (emuNAND == 1 ? 2 : 3) : 1) :
-                              (usePatchedFirmSet ? 4 : 0);
-
-        //If "Use pre-patched FIRMs" is set and the appropriate FIRM exists, use it
-        if(usePatchedFirmSet && fileExists(patchedFirms[selectedFirm - 1]))
-            usePatchedFirm = 1;
         //Detect EmuNAND
-        else if(emuNAND){
+        if(emuNAND){
             getEmunandSect(&emuOffset, &emuHeader, &emuNAND);
             //If none exists, force SysNAND + 9.6/10.x FIRM and re-detect patched FIRMs
             if(!emuNAND){
@@ -152,7 +127,7 @@ void setupCFW(void){
 void loadFirm(void){
 
     //If not using an A9LH setup or the patched FIRM, load 9.0 FIRM from NAND
-    if(!usePatchedFirm && !a9lhSetup && !mode){
+    if(!a9lhSetup && !mode){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0(0, 0, (u8 *)firm, firmSize, console);
@@ -161,7 +136,7 @@ void loadFirm(void){
             error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
     }
     // Load firm from emuNAND
-    else if (!usePatchedFirm && emuNAND){
+    else if (emuNAND){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0(1, emuOffset, (u8 *)firm, firmSize, console);
@@ -171,10 +146,9 @@ void loadFirm(void){
     }
     //Load FIRM from SD
     else{
-        const char *path = usePatchedFirm ? patchedFirms[selectedFirm - 1] :
-                                (mode ? "/aurei/firmware.bin" : "/aurei/firmware90.bin");
+        const char *path = "/firmware_cosmo.bin";
         firmSize = fileSize(path);
-        if(!firmSize) error("aurei/firmware(90).bin doesn't exist");
+        if(!firmSize) error("firmware_cosmo.bin doesn't exist");
         fileRead(firm, path, firmSize);
     }
 
@@ -182,11 +156,11 @@ void loadFirm(void){
 
     //Check that the loaded FIRM matches the console
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
-        error("aurei/firmware(90).bin doesn't match this\nconsole, or it's encrypted");
+        error("FIRM doesn't match this\nconsole, or it's encrypted");
 
     arm9Section = (u8 *)firm + section[2].offset;
 
-    if(console && !usePatchedFirm) decryptArm9Bin(arm9Section, mode);
+    if(console) decryptArm9Bin(arm9Section, mode);
 }
 
 //NAND redirection
@@ -231,9 +205,6 @@ static inline void loadEmu(u8 *proc9Offset){
 
 //Patches
 void patchFirm(void){
-
-    //Skip patching
-    if(usePatchedFirm) return;
 
     if(mode || emuNAND){
         //Find the Process9 NCCH location
@@ -287,11 +258,6 @@ void patchFirm(void){
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
     if(console)
         firm->arm9Entry = (u8 *)0x801B01C;
-
-    //Write patched FIRM to SD if needed
-    if(selectedFirm)
-        if(!fileWrite(firm, patchedFirms[selectedFirm - 1], firmSize))
-            error("Couldn't write the patched FIRM (no free space?)");
 }
 
 void launchFirm(void){

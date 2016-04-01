@@ -32,16 +32,6 @@ void clearScreens(void){
     memset32(fb->bottom, 0, 0x38400);
 }
 
-void loadSplash(void){
-    clearScreens();
-
-    //Don't delay boot if no splash image is on the SD
-    if(fileRead(fb->top_left, "/aurei/splash.bin", 0x46500) +
-       fileRead(fb->bottom, "/aurei/splashbottom.bin", 0x38400)){
-        u64 i = 0x1300000; while(--i) __asm("mov r0, r0"); //Less Ghetto sleep func
-    }
-}
-
 void drawCharacter(char character, int posX, int posY, u32 color){
     u8 *const select = fb->top_left;
 
