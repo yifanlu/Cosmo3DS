@@ -1,36 +1,23 @@
-# AuReiNand
-*A modification of the ReiNand custom firmware*
+# Cosmo3DS
 
-**Compiling:**
+This is a stripped down version of [AuReiNand](https://github.com/AuroraWright/AuReiNand) 
+that does nothing but load FIRM and emuNAND.
 
-You'll need armips and [bin2c](https://sourceforge.net/projects/bin2c/) added to your Path. [HERE](http://www91.zippyshare.com/v/ePGpjk9r/file.html) is a pre-compiled version of armips.
+It is intended to be used with [3ds_injector](https://github.com/yifanlu/3ds_injector) 
+to launch a modified `loader` in FIRM.
 
-You also need to have a recent build of makerom in your path for the injector to be built.
+## Why not just AuReiNand?
 
-Lastly, just run Make and everything should work!
+This adds no features to AuReiNand and in fact removes many features. This is 
+because I believe in simplicity and I believe in keeping features of code 
+integrity in the system intact. The name change is a result of this change in 
+philosophy. I understand that not everyone agrees with this so they are always 
+free to use AuReiNand instead.
 
-Copy everything in 'out' folder to SD root and run!
+## Build
 
-**Usage / Features:**
+Follow the directions for building AuReiNand.
 
-See https://github.com/Reisyukaku/ReiNand and http://gbatemp.net/threads/reinand-mod-o3ds-n3ds-sysnand.411110
+## Credits
 
-The FIRMs you need are [HERE](http://www99.zippyshare.com/v/kEIiQl0x/file.html).
-
-**Credits:**
- 
-Rei as this is mostly his code.
-
-The offset to detect the console, and to calculate the O3DS NAND CTR are from Decrypt9.
-
-tiniVi suggested me a way to detect a A9LH environment, and figured out screen deinit.
-
-Delebile provided me with the FIRM writes blocking patch.
-
-A skilled reverser gave me the new reboot patch.
-
-The screen init code is from dark_samus, bil1s, Normmatt, delebile and everyone who contributed.
-
-The code for printing to the screen is from CakesFW.
-
-ARM11 userland patching is only possible thanks to @yifanlu's 3ds_injector, which is bundled in the CFW.
+All credits go to Rei and AuroraWright for AuReiNand.

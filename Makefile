@@ -5,7 +5,7 @@ AS := arm-none-eabi-as
 LD := arm-none-eabi-ld
 OC := arm-none-eabi-objcopy
 
-name := AuReiNand
+name := Cosmo3DS
 version := $(shell git describe --abbrev=0 --tags)
 
 dir_source := source
@@ -19,7 +19,7 @@ dir_out := out
 ASFLAGS := -mlittle-endian -mcpu=arm946e-s -march=armv5te
 CFLAGS := -Wall -Wextra -MMD -MP -marm $(ASFLAGS) -fno-builtin -fshort-wchar -std=c11 -Wno-main -O2 -ffast-math
 CFLAGS += -DCONFIG_TITLE="\"$(name) $(version) configuration\""
-FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) ICON=$(abspath icon.png) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Reisyukaku/Aurora Wright" --no-print-directory
+FLAGS := name=$(name).dat dir_out=$(abspath $(dir_out)) APP_DESCRIPTION="Noob-friendly 3DS CFW." APP_AUTHOR="Reisyukaku/Aurora Wright" --no-print-directory
 
 objects_cfw = $(patsubst $(dir_source)/%.s, $(dir_build)/%.o, \
 			  $(patsubst $(dir_source)/%.c, $(dir_build)/%.o, \
@@ -49,7 +49,7 @@ clean:
 	@$(MAKE) -C $(dir_injector) clean
 
 $(dir_out):
-	@mkdir -p "$(dir_out)/aurei/payloads"
+	@mkdir -p "$(dir_out)"
 
 $(dir_out)/$(name).dat: $(dir_build)/main.bin $(dir_out)
 	@$(MAKE) $(FLAGS) -C $(dir_mset) launcher
