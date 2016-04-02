@@ -16,16 +16,12 @@
 #include "buttons.h"
 #include "../build/patches.h"
 
-//FIRM patches version
-#define PATCH_VER 3
-
 static firmHeader *const firm = (firmHeader *)0x24000000;
 static const firmSectionHeader *section;
 static u8 *arm9Section;
 
 static u32 firmSize,
            console,
-           mode,
            emuNAND,
            a9lhSetup,
            emuOffset,
@@ -42,101 +38,26 @@ void setupCFW(void){
     //Get pressed buttons
     u16 pressed = HID_PAD;
 
-    //Attempt to read the configuration file
-    const char configPath[] = "config_cosmo.bin";
-    u32 config = 0,
-        needConfig = fileRead(&config, configPath, 3) ? 1 : 2;
+    //Determine if A9LH is installed
 
-    //Determine if A9LH is installed and the user has an updated sysNAND
-    u32 updatedSys;
-
-    if(a9lhBoot || (config >> 2) & 1){
+    if(a9lhBoot){
         if(pressed == SAFE_MODE)
             error("Using Safe Mode would brick you, or remove A9LH!");
 
         a9lhSetup = 1;
-        //Check setting for > 9.2 sysNAND
-        updatedSys = config & 1;
     } else{
         a9lhSetup = 0;
-        updatedSys = 0;
     }
 
-    u32 tempConfig = (PATCH_VER << 17) | (a9lhSetup << 16);
-
-    /* If booting with A9LH, it's a MCU reboot and a previous configuration exists,
-       try to force boot options */
-    if(a9lhBoot && previousFirm && needConfig == 1){
-        //Always force a sysNAND boot when quitting AGB_FIRM
-        if(previousFirm == 7){
-            mode = updatedSys ? 1 : (config >> 12) & 1;
-            emuNAND = 0;
-            //Flag to prevent multiple boot options-forcing
-            tempConfig |= 1 << 15;
-            needConfig = 0;
-        /* Else, force the last used boot options unless A, L or R are pressed
-           or the no-forcing flag is set */
-        } else if(!(pressed & OPTION_BUTTONS) && !((config >> 15) & 1)){
-            mode = (config >> 12) & 1;
-            emuNAND = (config >> 13) & 3;
-            needConfig = 0;
-        }
-    }
-
-    if(needConfig){
-        //If screens are inited, clear screen
-        if(PDN_GPU_CNT != 1) clearScreens();
-
-        /* If L is pressed, boot 9.0 FIRM */
-        mode = ((config >> 3) & 1) ? ((!(pressed & BUTTON_L1R1)) ? 0 : 1) :
-                                     ((pressed & BUTTON_L1) ? 0 : 1);
-
-        /* If L or R aren't pressed on a 9.0/9.2 sysNAND, or the 9.0 FIRM is selected
-           or R is pressed on a > 9.2 sysNAND, boot emuNAND */
-        if((updatedSys && (!mode || (pressed & BUTTON_R1))) ||
-           (!updatedSys && mode && !(pressed & BUTTON_R1))){
-            //If not 9.0 FIRM and B is pressed, attempt booting the second emuNAND
-            emuNAND = (mode && ((!(pressed & BUTTON_B)) == ((config >> 4) & 1))) ? 2 : 1;
-        } else emuNAND = 0;
-    }
-
-    while(1){
-        //Detect EmuNAND
-        if(emuNAND){
-            getEmunandSect(&emuOffset, &emuHeader, &emuNAND);
-            //If none exists, force SysNAND + 9.6/10.x FIRM and re-detect patched FIRMs
-            if(!emuNAND){
-                mode = 1;
-                continue;
-            }
-        }
-        break;
-    }
-
-    tempConfig |= (emuNAND << 13) | (mode << 12);
-
-    //If the boot configuration is different from previously, overwrite it
-    if(tempConfig != (config & 0xFFF000)){
-        //Preserve user settings (first 12 bits)
-        tempConfig |= config & 0xFFF;
-        fileWrite(&tempConfig, configPath, 3);
-    }
+    //Detect EmuNAND
+    emuNAND = 1;
+    getEmunandSect(&emuOffset, &emuHeader, &emuNAND);
 }
 
 //Load FIRM into FCRAM
 void loadFirm(void){
-
-    //If not using an A9LH setup or the patched FIRM, load 9.0 FIRM from NAND
-    if(!a9lhSetup && !mode){
-        //Read FIRM from NAND and write to FCRAM
-        firmSize = console ? 0xF2000 : 0xE9000;
-        nandFirm0(0, 0, (u8 *)firm, firmSize, console);
-        //Check for correct decryption
-        if(memcmp(firm, "FIRM", 4) != 0)
-            error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
-    }
     // Load firm from emuNAND
-    else if (emuNAND){
+    if (emuNAND){
         //Read FIRM from NAND and write to FCRAM
         firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0(1, emuOffset, (u8 *)firm, firmSize, console);
@@ -144,11 +65,20 @@ void loadFirm(void){
         if(memcmp(firm, "FIRM", 4) != 0)
             error("Couldn't decrypt emuNAND FIRM0");
     }
-    //Load FIRM from SD
+    //If not using an A9LH setup, load 9.0 FIRM from NAND
+    else if(!a9lhSetup){
+        //Read FIRM from NAND and write to FCRAM
+        firmSize = console ? 0xF2000 : 0xE9000;
+        nandFirm0(0, 0, (u8 *)firm, firmSize, console);
+        //Check for correct decryption
+        if(memcmp(firm, "FIRM", 4) != 0)
+            error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
+    }
+    //Load 9.0 FIRM from SD
     else{
-        const char *path = "/firmware_cosmo.bin";
+        const char *path = "/firmware90.bin";
         firmSize = fileSize(path);
-        if(!firmSize) error("firmware_cosmo.bin doesn't exist");
+        if(!firmSize) error("firmware90.bin doesn't exist");
         fileRead(firm, path, firmSize);
     }
 
@@ -160,7 +90,7 @@ void loadFirm(void){
 
     arm9Section = (u8 *)firm + section[2].offset;
 
-    if(console) decryptArm9Bin(arm9Section, mode);
+    if(console) decryptArm9Bin(arm9Section, emuNAND);
 }
 
 //NAND redirection
@@ -206,32 +136,30 @@ static inline void loadEmu(u8 *proc9Offset){
 //Patches
 void patchFirm(void){
 
-    if(mode || emuNAND){
+    if(emuNAND){
         //Find the Process9 NCCH location
         u8 *proc9Offset = getProc9(arm9Section, section[2].size);
 
         //Apply emuNAND patches
-        if(emuNAND) loadEmu(proc9Offset);
+        loadEmu(proc9Offset);
 
         //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
-        if(mode){
-            //Calculate offset for the firmlaunch code
-            void *rebootOffset = getReboot(arm9Section, section[2].size);
-            //Calculate offset for the fOpen function
-            u32 fOpenOffset = getfOpen(proc9Offset, rebootOffset);
+        //Calculate offset for the firmlaunch code
+        void *rebootOffset = getReboot(arm9Section, section[2].size);
+        //Calculate offset for the fOpen function
+        u32 fOpenOffset = getfOpen(proc9Offset, rebootOffset);
 
-            //Copy firmlaunch code
-            memcpy(rebootOffset, reboot, reboot_size);
+        //Copy firmlaunch code
+        memcpy(rebootOffset, reboot, reboot_size);
 
-            //Put the fOpen offset in the right location
-            u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", reboot_size, 4);
-            *pos_fopen = fOpenOffset;
+        //Put the fOpen offset in the right location
+        u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", reboot_size, 4);
+        *pos_fopen = fOpenOffset;
 
-            //Patch path for emuNAND-patched FIRM
-            if(emuNAND){
-                void *pos_path = memsearch(rebootOffset, L"sy", reboot_size, 4);
-                memcpy(pos_path, emuNAND == 1 ? L"emu" : L"em2", 5);
-            }
+        //Patch path for emuNAND-patched FIRM
+        if(emuNAND){
+            void *pos_path = memsearch(rebootOffset, L"sy", reboot_size, 4);
+            memcpy(pos_path, emuNAND == 1 ? L"emu" : L"em2", 5);
         }
     }
 
@@ -262,7 +190,7 @@ void patchFirm(void){
 
 void launchFirm(void){
 
-    if(console && mode) setKeyXs(arm9Section);
+    if(console && emuNAND) setKeyXs(arm9Section);
 
     //Copy firm partitions to respective memory locations
     memcpy(section[0].address, (u8 *)firm + section[0].offset, section[0].size);
