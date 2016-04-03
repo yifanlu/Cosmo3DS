@@ -50,8 +50,11 @@ void setupCFW(void){
     }
 
     //Detect EmuNAND
-    emuNAND = 1;
-    getEmunandSect(&emuOffset, &emuHeader, &emuNAND);
+    emuNAND = 0;
+    if (pressed != BUTTON_L1){
+        emuNAND = 1;
+        getEmunandSect(&emuOffset, &emuHeader, &emuNAND);
+    }
 }
 
 //Load FIRM into FCRAM
