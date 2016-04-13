@@ -21,8 +21,8 @@ void memmove(void *dest, const void *src, u32 size){
     else{
         u8 *destc = (u8 *)dest;
         const u8 *srcc = (const u8 *)src;
-        for(u32 i = size-1; i >= 0; i--)
-            destc[i] = srcc[i];
+        for(u32 i = 1; i <= size; ++i)
+            destc[size-i] = srcc[size-i];
     }
 }
 
