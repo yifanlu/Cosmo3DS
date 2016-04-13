@@ -77,11 +77,11 @@ void loadFirm(void){
         if(memcmp(firm, "FIRM", 4) != 0)
             error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
     }
-    //Load 9.0 FIRM from SD
+    //Load FIRM from SD
     else{
-        const char *path = "/firmware90.bin";
+        const char *path = "/firmware.bin";
         firmSize = fileSize(path);
-        if(!firmSize) error("firmware90.bin doesn't exist");
+        if(!firmSize) error("firmware.bin doesn't exist");
         fileRead(firm, path, firmSize);
     }
 
