@@ -49,9 +49,9 @@ void setupCFW(void){
         a9lhSetup = 0;
     }
 
-    //Detect EmuNAND
+    //Detect EmuNAND if not booting sysNAND or returning from AGB_FIRM
     emuNAND = 0;
-    if (pressed != BUTTON_L1){
+    if (pressed != BUTTON_L1 && previousFirm != 7){
         emuNAND = 1;
         getEmunandSect(&emuOffset, &emuHeader, &emuNAND);
     }
