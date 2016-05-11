@@ -82,10 +82,7 @@ void loadFirm(void){
         const char *path = "/firmware.bin";
         firmSize = fileSize(path);
         if(!firmSize) error("firmware.bin doesn't exist");
-        fileRead(firm, path, firmSize);
-        memcpy(firm->section[0].address, (u8 *)firm + section[0].offset, firm->section[0].size);
-        memcpy(firm->section[1].address, (u8 *)firm + section[1].offset, firm->section[1].size);
-        memcpy(firm->section[2].address, (u8 *)firm + section[2].offset, firm->section[2].size);
+        fileFirm0(path, (u8 *)firm);
     }
 
     section = firm->section;

@@ -14,3 +14,4 @@ u32 fileWrite(const void *buffer, const char *path, u32 size);
 u32 fileSize(const char *path);
 u32 fileExists(const char *path);
 void fileDelete(const char *path);
+void fileFirm0(const char *path, u8 *outbuf);

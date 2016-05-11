@@ -6,6 +6,7 @@
 
 #include "fs.h"
 #include "fatfs/ff.h"
+#include "firm.h"
 
 static FATFS fs;
 
@@ -64,4 +65,33 @@ u32 fileExists(const char *path){
 
 void fileDelete(const char *path){
     f_unlink(path);
+}
+
+void fileFirm0(const char *path, u8 *outbuf) {
+    FRESULT fr;
+    FIL fp;
+    unsigned int br = 0;
+    firmHeader *hdr = (firmHeader *)outbuf;
+
+    if (f_open(&fp, path, FA_READ) != FR_OK){
+        return;
+    }
+    fr = f_read(&fp, outbuf, 0x200, &br);
+    if (fr != FR_OK || hdr->magic != 0x4D524946) { // FIRM
+        goto err;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        if (hdr->section[i].size) {
+            if (f_lseek(&fp, hdr->section[i].offset) != FR_OK) {
+                goto err;
+            }
+            if (f_read(&fp, hdr->section[i].address, hdr->section[i].size, &br) != FR_OK) {
+                goto err;
+            }
+        }
+    }
+
+err:
+    f_close(&fp);
 }
