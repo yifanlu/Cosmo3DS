@@ -59,10 +59,12 @@ void setupCFW(void){
 
 //Load FIRM into FCRAM
 void loadFirm(void){
+    u32 mode;
+    firmSize = 0x100000;
+    
     // Load firm from emuNAND
     if (emuNAND){
         //Read FIRM from NAND and write to FCRAM
-        firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0(1, emuOffset, (u8 *)firm, firmSize, console);
         //Check for correct decryption
         if(memcmp(firm, "FIRM", 4) != 0)
@@ -71,7 +73,6 @@ void loadFirm(void){
     //If not using an A9LH setup, load 9.0 FIRM from NAND
     else if(!a9lhSetup){
         //Read FIRM from NAND and write to FCRAM
-        firmSize = console ? 0xF2000 : 0xE9000;
         nandFirm0(0, 0, (u8 *)firm, firmSize, console);
         //Check for correct decryption
         if(memcmp(firm, "FIRM", 4) != 0)
