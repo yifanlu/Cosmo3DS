@@ -7,6 +7,7 @@
 */
 
 #include "crypto.h"
+#include "firm.h"
 #include "memory.h"
 #include "fatfs/sdmmc/sdmmc.h"
 
@@ -276,7 +277,7 @@ static const u8 key2[0x10] = {
 };
 
 //Get Nand CTR key
-static void getNandCTR(u8 *buf, u32 console){
+static void getNandCTR(u8 *buf){
     // calculate CTRNAND/TWL ctr from NAND CID
     // Taken from Decrypt9
     u8 NandCid[16];
@@ -288,18 +289,37 @@ static void getNandCTR(u8 *buf, u32 console){
 }
 
 //Read firm0 from NAND and write to buffer
-void nandFirm0(u32 usesd, u32 sdoff, u8 *outbuf, u32 size, u32 console){
+void nandFirm0(u32 usesd, u32 sdoff, u8 *outbuf){
     u8 CTR[0x10];
-    getNandCTR(CTR, console);
+    u32 last;
+    firmHeader *hdr = (firmHeader *)outbuf;
+    getNandCTR(CTR);
 
     if (usesd)
-        sdmmc_sdcard_readsectors(sdoff + (0x0B130000 / 0x200), size / 0x200, outbuf);
+        sdmmc_sdcard_readsectors(sdoff + (0x0B130000 / 0x200), 1, outbuf);
     else
-        sdmmc_nand_readsectors(0x0B130000 / 0x200, size / 0x200, outbuf);
+        sdmmc_nand_readsectors(0x0B130000 / 0x200, 1, outbuf);
 
-    aes_advctr(CTR, 0x0B130000/0x10, AES_INPUT_BE | AES_INPUT_NORMAL);
     aes_use_keyslot(0x06);
-    aes(outbuf, outbuf, size / AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_advctr(CTR, 0x0B130000/0x10, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes(outbuf, outbuf, 0x200 / AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+    if (hdr->magic != 0x4D524946) // FIRM
+        return;
+
+    last = 0x200;
+    for (int i = 0; i < 4; i++) {
+        if (!hdr->section[i].size)
+            continue;
+
+        if (usesd)
+            sdmmc_sdcard_readsectors(sdoff + (0x0B130000 + hdr->section[i].offset) / 0x200, hdr->section[i].size / 0x200, hdr->section[i].address);
+        else
+            sdmmc_nand_readsectors((0x0B130000 + hdr->section[i].offset) / 0x200, hdr->section[i].size / 0x200, hdr->section[i].address);
+
+        aes_advctr(CTR, hdr->section[i].offset - last, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes(hdr->section[i].address, hdr->section[i].address, hdr->section[i].size / AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
+        last = hdr->section[i].offset + hdr->section[i].size;
+    }
 }
 
 //ARM9Loader replacement

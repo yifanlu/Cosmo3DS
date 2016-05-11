@@ -60,22 +60,21 @@ void setupCFW(void){
 //Load FIRM into FCRAM
 void loadFirm(void){
     u32 mode;
-    firmSize = 0x100000;
     
     // Load firm from emuNAND
     if (emuNAND){
         //Read FIRM from NAND and write to FCRAM
-        nandFirm0(1, emuOffset, (u8 *)firm, firmSize, console);
+        nandFirm0(1, emuOffset, (u8 *)firm);
         //Check for correct decryption
-        if(memcmp(firm, "FIRM", 4) != 0)
+        if(firm->magic != 0x4D524946)
             error("Couldn't decrypt emuNAND FIRM0");
     }
     //If not using an A9LH setup, load 9.0 FIRM from NAND
     else if(!a9lhSetup){
         //Read FIRM from NAND and write to FCRAM
-        nandFirm0(0, 0, (u8 *)firm, firmSize, console);
+        nandFirm0(0, 0, (u8 *)firm);
         //Check for correct decryption
-        if(memcmp(firm, "FIRM", 4) != 0)
+        if(firm->magic != 0x4D524946)
             error("Couldn't decrypt NAND FIRM0 (O3DS not on 9.x?)");
     }
     //Load FIRM from SD
@@ -84,6 +83,9 @@ void loadFirm(void){
         firmSize = fileSize(path);
         if(!firmSize) error("firmware.bin doesn't exist");
         fileRead(firm, path, firmSize);
+        memcpy(section[0].address, (u8 *)firm + section[0].offset, section[0].size);
+        memcpy(section[1].address, (u8 *)firm + section[1].offset, section[1].size);
+        memcpy(section[2].address, (u8 *)firm + section[2].offset, section[2].size);
     }
 
     section = firm->section;
@@ -92,7 +94,7 @@ void loadFirm(void){
     if((((u32)section[2].address >> 8) & 0xFF) != (console ? 0x60 : 0x68))
         error("FIRM doesn't match this\nconsole, or it's encrypted");
 
-    arm9Section = (u8 *)firm + section[2].offset;
+    arm9Section = (u8 *)section[2].address;
 
     if(console)
     {
@@ -130,8 +132,7 @@ static inline void loadEmu(u8 *proc9Offset){
     *pos_sdmmc = getSDMMC(arm9Section, section[2].size);
 
     //Calculate offset for the hooks
-    u32 branchOffset = (u32)emuCodeOffset - (u32)firm -
-                       section[2].offset + (u32)section[2].address;
+    u32 branchOffset = (u32)emuCodeOffset;
 
     //Add emunand hooks
     u32 emuRead,
@@ -154,13 +155,22 @@ static inline void loadEmu(u8 *proc9Offset){
 
 static inline void copySection0AndInjectLoader(void)
 {
-    u8 *arm11Section0 = (u8 *)firm + section[0].offset;
+    u8 *arm11Section0 = section[0].address;
     u32 loaderSize;
     u32 loaderOffset = getLoader(arm11Section0, &loaderSize);
 
-    memcpy(section[0].address, arm11Section0, loaderOffset);
+    if (loaderSize < (u32)injector_size)
+    {
+        error("Injector too large for this FIRM! Please rebuild.");
+        return;
+    }
+
+    //memcpy(section[0].address, arm11Section0, loaderOffset);
     memcpy(section[0].address + loaderOffset, injector, injector_size);
-    memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
+    //Patch content size and ExeFS size to match the repaced loader's ones
+    *((u32 *)(section[0].address + loaderOffset) + 0x41) = loaderSize / 0x200;
+    *((u32 *)(section[0].address + loaderOffset) + 0x69) = loaderSize / 0x200 - 5;
+    //memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
 }
 
 //Patches
@@ -205,8 +215,8 @@ void patchFirm(void){
 void launchFirm(void){
     //Copy firm partitions to respective memory locations
     //section 0 will be after patching loader
-    memcpy(section[1].address, (u8 *)firm + section[1].offset, section[1].size);
-    memcpy(section[2].address, arm9Section, section[2].size);
+    //memcpy(section[1].address, (u8 *)firm + section[1].offset, section[1].size);
+    //memcpy(section[2].address, arm9Section, section[2].size);
 
     //Fixes N3DS 3D
     deinitScreens();
