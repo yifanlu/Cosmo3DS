@@ -50,9 +50,18 @@ u16 *getFirmWrite(u8 *pos, u32 size){
     return (u16 *)memsearch(off - 0x100, pattern, 0x100, 4);
 }
 
-void getLoader(u8 *pos, u32 size, u32 *loaderOffset, u32 *loaderSize){
-    u8 *const off = memsearch(pos, "loade", size, 5);
+u32 getLoader(u8 *pos, u32 *loaderSize){
+    u8 *off = pos;
+    u32 size;
 
-    *loaderOffset = (u32)(off - pos) - 0x200;
-    *loaderSize = *(u32 *)(off - 0xFC) * 0x200;
+    while(1)
+    {
+        size = *(u32 *)(off + 0x104) * 0x200;
+        if(*(u32 *)(off + 0x200) == 0x64616F6C) break;
+        off += size;
+    }
+
+    *loaderSize = size;
+
+    return (u32)(off - pos);
 }

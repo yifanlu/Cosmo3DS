@@ -302,52 +302,56 @@ void nandFirm0(u32 usesd, u32 sdoff, u8 *outbuf, u32 size, u32 console){
     aes(outbuf, outbuf, size / AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 }
 
-//Decrypts the N3DS arm9bin
-void decryptArm9Bin(u8 *arm9Section, u32 mode){
-
+//ARM9Loader replacement
+void arm9Loader(u8 *arm9Section, u32 mode)
+{
     //Firm keys
-    u8 keyY[0x10];
-    u8 CTR[0x10];
-    u8 slot = mode ? 0x16 : 0x15;
+    u8 keyY[0x10],
+       arm9BinCTR[0x10],
+       arm9BinSlot = mode ? 0x16 : 0x15;
 
     //Setup keys needed for arm9bin decryption
     memcpy(keyY, arm9Section + 0x10, 0x10);
-    memcpy(CTR, arm9Section + 0x20, 0x10);
-    u32 size = 0;
+    memcpy(arm9BinCTR, arm9Section + 0x20, 0x10);
+
+    //Calculate the size of the ARM9 binary
+    u32 arm9BinSize = 0;
     //http://stackoverflow.com/questions/12791077/atoi-implementation-in-c
     for(u8 *tmp = arm9Section + 0x30; *tmp; tmp++)
-        size = (size << 3) + (size << 1) + (*tmp) - '0';
+        arm9BinSize = (arm9BinSize << 3) + (arm9BinSize << 1) + *tmp - '0';
 
-    if(mode){
+    if(mode)
+    {
+        const u8 key1[0x10] = {0x07, 0x29, 0x44, 0x38, 0xF8, 0xC9, 0x75, 0x93, 0xAA, 0x0E, 0x4A, 0xB4, 0xAE, 0x84, 0xC1, 0xD8},
+                 key2[0x10] = {0x42, 0x3F, 0x81, 0x7A, 0x23, 0x52, 0x58, 0x31, 0x6E, 0x75, 0x8E, 0x3A, 0x39, 0x43, 0x2E, 0xD0};
         u8 keyX[0x10];
 
-        //Set 0x11 to key2 for the arm9bin and misc keys
-        aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(0x11, mode == 1 ? key1 : key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
         aes_use_keyslot(0x11);
         aes(keyX, arm9Section + 0x60, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+        aes_setkey(arm9BinSlot, keyX, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
     }
 
-    aes_setkey(slot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_setiv(CTR, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_use_keyslot(slot);
+    aes_setkey(arm9BinSlot, keyY, AES_KEYY, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_setiv(arm9BinCTR, AES_INPUT_BE | AES_INPUT_NORMAL);
+    aes_use_keyslot(arm9BinSlot);
 
     //Decrypt arm9bin
-    aes(arm9Section + 0x800, arm9Section + 0x800, size/AES_BLOCK_SIZE, CTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
-}
+    aes(arm9Section + 0x800, arm9Section + 0x800, arm9BinSize / AES_BLOCK_SIZE, arm9BinCTR, AES_CTR_MODE, AES_INPUT_BE | AES_INPUT_NORMAL);
 
-//Sets the N3DS 9.6 KeyXs
-void setKeyXs(u8 *arm9Section){
+    //Set >=9.6 KeyXs
+    if(mode == 2)
+    {
+        u8 keyData[0x10] = {0xDD, 0xDA, 0xA4, 0xC6, 0x2C, 0xC4, 0x50, 0xE9, 0xDA, 0xB6, 0x9B, 0x0D, 0x9D, 0x2A, 0x21, 0x98},
+           decKey[0x10];
 
-    u8 *keyData = arm9Section + 0x89814;
-    u8 *decKey = keyData + 0x10;
-
-    //Set keys 0x19..0x1F keyXs
-    aes_setkey(0x11, key2, AES_KEYNORMAL, AES_INPUT_BE | AES_INPUT_NORMAL);
-    aes_use_keyslot(0x11);
-    for(u8 slot = 0x19; slot < 0x20; slot++){
-        aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
-        aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
-        *(keyData + 0xF) += 1;
+        //Set keys 0x19..0x1F keyXs
+        aes_use_keyslot(0x11);
+        for(u8 slot = 0x19; slot < 0x20; slot++)
+        {
+            aes(decKey, keyData, 1, NULL, AES_ECB_DECRYPT_MODE, 0);
+            aes_setkey(slot, decKey, AES_KEYX, AES_INPUT_BE | AES_INPUT_NORMAL);
+            keyData[0xF] += 1;
+        }
     }
 }

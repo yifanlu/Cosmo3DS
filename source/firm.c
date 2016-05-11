@@ -93,7 +93,22 @@ void loadFirm(void){
 
     arm9Section = (u8 *)firm + section[2].offset;
 
-    if(console) decryptArm9Bin(arm9Section, emuNAND);
+    if(console)
+    {
+        switch(arm9Section[0x53])
+        {
+            case 0xFF:
+                mode = 0;
+                break;
+            case '1':
+                mode = 1;
+                break;
+            default:
+                mode = 2;
+                break;
+        }
+        arm9Loader(arm9Section, mode);
+    }
 }
 
 //NAND redirection
@@ -136,6 +151,17 @@ static inline void loadEmu(u8 *proc9Offset){
     *(mpuOffset + 9) = mpuPatch[2];
 }
 
+static inline void copySection0AndInjectLoader(void)
+{
+    u8 *arm11Section0 = (u8 *)firm + section[0].offset;
+    u32 loaderSize;
+    u32 loaderOffset = getLoader(arm11Section0, &loaderSize);
+
+    memcpy(section[0].address, arm11Section0, loaderOffset);
+    memcpy(section[0].address + loaderOffset, injector, injector_size);
+    memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
+}
+
 //Patches
 void patchFirm(void){
 
@@ -158,12 +184,6 @@ void patchFirm(void){
         //Put the fOpen offset in the right location
         u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", reboot_size, 4);
         *pos_fopen = fOpenOffset;
-
-        //Patch path for emuNAND-patched FIRM
-        if(emuNAND){
-            void *pos_path = memsearch(rebootOffset, L"sy", reboot_size, 4);
-            memcpy(pos_path, emuNAND == 1 ? L"emu" : L"em2", 5);
-        }
     }
 
     if(a9lhSetup && !emuNAND){
@@ -173,18 +193,8 @@ void patchFirm(void){
         *(writeOffset + 1) = writeBlock[1];
     }
 
-    //Replace the FIRM loader with the injector
-    u32 loaderOffset,
-        loaderSize;
-    u8 *sec0;
-    char temp[100];
-
-    sec0 = (u8 *)firm + section[0].offset;
-    getLoader(sec0, section[0].size, &loaderOffset, &loaderSize);
-    memmove(sec0 + loaderOffset + injector_size, 
-            sec0 + loaderOffset + loaderSize, 
-            section[0].size - (loaderOffset + loaderSize));
-    memcpy(sec0 + loaderOffset, injector, injector_size);
+    //Replace the FIRM loader with the injector while copying section0
+    copySection0AndInjectLoader();
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
     if(console)
@@ -192,11 +202,8 @@ void patchFirm(void){
 }
 
 void launchFirm(void){
-
-    if(console && emuNAND) setKeyXs(arm9Section);
-
     //Copy firm partitions to respective memory locations
-    memcpy(section[0].address, (u8 *)firm + section[0].offset, section[0].size);
+    //section 0 will be after patching loader
     memcpy(section[1].address, (u8 *)firm + section[1].offset, section[1].size);
     memcpy(section[2].address, arm9Section, section[2].size);
 

@@ -74,5 +74,4 @@
 
 //NAND/FIRM stuff
 void nandFirm0(u32 usesd, u32 sdoff, u8 *outbuf, u32 size, u32 console);
-void decryptArm9Bin(u8 *arm9Section, u32 mode);
-void setKeyXs(u8 *arm9Section);
+void arm9Loader(u8 *arm9Section, u32 mode);

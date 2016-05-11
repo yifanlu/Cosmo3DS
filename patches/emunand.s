@@ -40,7 +40,7 @@ nand_sd:
         add r0, #4
         bx r0
 .pool
-sdmmc:	                .ascii "SDMC"
-nand_offset:		.ascii "NAND"       ; for rednand this should be 1
-ncsd_header_offset:	.ascii "NCSD"       ; depends on nand manufacturer + emunand type (GW/RED)
+sdmmc:                  .ascii "SDMC"
+nand_offset:        .ascii "NAND"       ; for rednand this should be 1
+ncsd_header_offset: .ascii "NCSD"       ; depends on nand manufacturer + emunand type (GW/RED)
 .close
