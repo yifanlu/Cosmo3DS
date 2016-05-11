@@ -83,9 +83,9 @@ void loadFirm(void){
         firmSize = fileSize(path);
         if(!firmSize) error("firmware.bin doesn't exist");
         fileRead(firm, path, firmSize);
-        memcpy(section[0].address, (u8 *)firm + section[0].offset, section[0].size);
-        memcpy(section[1].address, (u8 *)firm + section[1].offset, section[1].size);
-        memcpy(section[2].address, (u8 *)firm + section[2].offset, section[2].size);
+        memcpy(firm->section[0].address, (u8 *)firm + section[0].offset, firm->section[0].size);
+        memcpy(firm->section[1].address, (u8 *)firm + section[1].offset, firm->section[1].size);
+        memcpy(firm->section[2].address, (u8 *)firm + section[2].offset, firm->section[2].size);
     }
 
     section = firm->section;
