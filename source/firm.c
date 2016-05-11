@@ -150,7 +150,7 @@ static inline void loadEmu(u8 *proc9Offset){
     *(mpuOffset + 9) = mpuPatch[2];
 }
 
-static inline void copySection0AndInjectLoader(void)
+static inline void injectLoader(void)
 {
     u8 *arm11Section0 = section[0].address;
     u32 loaderSize;
@@ -163,11 +163,10 @@ static inline void copySection0AndInjectLoader(void)
     }
 
     //memcpy(section[0].address, arm11Section0, loaderOffset);
-    memcpy(section[0].address + loaderOffset, injector, injector_size);
+    memcpy(arm11Section0 + loaderOffset, injector, injector_size);
     //Patch content size and ExeFS size to match the repaced loader's ones
-    *((u32 *)(section[0].address + loaderOffset) + 0x41) = loaderSize / 0x200;
-    *((u32 *)(section[0].address + loaderOffset) + 0x69) = loaderSize / 0x200 - 5;
-    //memcpy(section[0].address + loaderOffset + injector_size, arm11Section0 + loaderOffset + loaderSize, section[0].size - (loaderOffset + loaderSize));
+    *((u32 *)(arm11Section0 + loaderOffset) + 0x41) = loaderSize / 0x200;
+    *((u32 *)(arm11Section0 + loaderOffset) + 0x69) = loaderSize / 0x200 - 5;
 }
 
 //Patches
@@ -202,7 +201,7 @@ void patchFirm(void){
     }
 
     //Replace the FIRM loader with the injector while copying section0
-    copySection0AndInjectLoader();
+    injectLoader();
 
     //Patch ARM9 entrypoint on N3DS to skip arm9loader
     if(console)
@@ -210,11 +209,6 @@ void patchFirm(void){
 }
 
 void launchFirm(void){
-    //Copy firm partitions to respective memory locations
-    //section 0 will be after patching loader
-    //memcpy(section[1].address, (u8 *)firm + section[1].offset, section[1].size);
-    //memcpy(section[2].address, arm9Section, section[2].size);
-
     //Fixes N3DS 3D
     deinitScreens();
 
