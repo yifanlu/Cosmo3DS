@@ -179,6 +179,7 @@ void patchFirm(void){
         //Apply emuNAND patches
         loadEmu(proc9Offset);
 
+        /*
         //Patch FIRM reboots, not on 9.0 FIRM as it breaks firmlaunchhax
         //Calculate offset for the firmlaunch code
         void *rebootOffset = getReboot(arm9Section, section[2].size);
@@ -191,6 +192,7 @@ void patchFirm(void){
         //Put the fOpen offset in the right location
         u32 *pos_fopen = (u32 *)memsearch(rebootOffset, "OPEN", reboot_size, 4);
         *pos_fopen = fOpenOffset;
+        */
     }
 
     if(a9lhSetup && !emuNAND){
